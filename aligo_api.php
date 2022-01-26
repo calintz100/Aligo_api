@@ -1,5 +1,5 @@
 
-<?
+<?php
 
 
 class Kakao_Aligo
