@@ -1,6 +1,4 @@
-
-<?
-
+<?php
 
 class Kakao_Aligo
 {
@@ -12,14 +10,15 @@ class Kakao_Aligo
     private $_sender_key = "";
 
 
+
     public function __construct()
     { //생성자
 
         //토큰이 없으면 생성
-        if (!isset($_SESSION['aligo_token'])) {
-            //$_SESSION['aligo_token'] = $this->create_token();
-            $this->set_session('aligo_token', $this->create_token());
-        }
+        //if (!isset($_SESSION['aligo_token'])) {
+        //$_SESSION['aligo_token'] = $this->create_token();
+        set_session('aligo_token', $this->create_token());
+        //}
     }
 
     public function create_token()
@@ -33,26 +32,7 @@ class Kakao_Aligo
             'userid' => $this->_userid
         );
 
-        $oCurl = curl_init();
-        curl_setopt($oCurl, CURLOPT_PORT, $_port);
-        curl_setopt($oCurl, CURLOPT_URL, $_apiURL);
-        curl_setopt($oCurl, CURLOPT_POST, 1);
-        curl_setopt($oCurl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($oCurl, CURLOPT_POSTFIELDS, http_build_query($_variables));
-        curl_setopt($oCurl, CURLOPT_SSL_VERIFYPEER, FALSE);
-
-        $ret = curl_exec($oCurl);
-        $error_msg = curl_error($oCurl);
-        curl_close($oCurl);
-
-        // 리턴 JSON 문자열 확인
-        //print_r($ret . PHP_EOL);
-
-        // JSON 문자열 배열 변환
-        $retArr = json_decode($ret);
-
-        // 결과값 출력
-        //print_r($retArr);
+        $retArr = $this->aligo_curl($_port, $_apiURL, $_variables);
 
         return $retArr->token;
     }
@@ -73,26 +53,8 @@ class Kakao_Aligo
             'phonenumber' => $this->_phonenumber
         );
 
-        $oCurl = curl_init();
-        curl_setopt($oCurl, CURLOPT_PORT, $_port);
-        curl_setopt($oCurl, CURLOPT_URL, $_apiURL);
-        curl_setopt($oCurl, CURLOPT_POST, 1);
-        curl_setopt($oCurl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($oCurl, CURLOPT_POSTFIELDS, http_build_query($_variables));
-        curl_setopt($oCurl, CURLOPT_SSL_VERIFYPEER, FALSE);
 
-        $ret = curl_exec($oCurl);
-        $error_msg = curl_error($oCurl);
-        curl_close($oCurl);
-
-        // 리턴 JSON 문자열 확인
-        //print_r($ret . PHP_EOL);
-
-        // JSON 문자열 배열 변환
-        $retArr = json_decode($ret);
-
-        // 결과값 출력
-        //print_r($retArr);
+        $retArr = $this->aligo_curl($_port, $_apiURL, $_variables);
 
 
         //에러 있을경우 에러 출력
@@ -117,23 +79,7 @@ class Kakao_Aligo
             'token'       =>  $_SESSION['aligo_token']
         );
 
-        $oCurl = curl_init();
-        curl_setopt($oCurl, CURLOPT_PORT, $_port);
-        curl_setopt($oCurl, CURLOPT_URL, $_apiURL);
-        curl_setopt($oCurl, CURLOPT_POST, 1);
-        curl_setopt($oCurl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($oCurl, CURLOPT_POSTFIELDS, http_build_query($_variables));
-        curl_setopt($oCurl, CURLOPT_SSL_VERIFYPEER, FALSE);
-
-        $ret = curl_exec($oCurl);
-        $error_msg = curl_error($oCurl);
-        curl_close($oCurl);
-
-        // 리턴 JSON 문자열 확인
-        //print_r($ret . PHP_EOL);
-
-        // JSON 문자열 배열 변환
-        $retArr = json_decode($ret);
+        $retArr = $this->aligo_curl($_port, $_apiURL, $_variables);
 
         // 결과값 출력
         //print_r($retArr);
@@ -162,31 +108,39 @@ class Kakao_Aligo
             'categorycode'  => $cagegory_info[2]['code']
         );
 
-        $oCurl = curl_init();
-        curl_setopt($oCurl, CURLOPT_PORT, $_port);
-        curl_setopt($oCurl, CURLOPT_URL, $_apiURL);
-        curl_setopt($oCurl, CURLOPT_POST, 1);
-        curl_setopt($oCurl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($oCurl, CURLOPT_POSTFIELDS, http_build_query($_variables));
-        curl_setopt($oCurl, CURLOPT_SSL_VERIFYPEER, FALSE);
-
-        $ret = curl_exec($oCurl);
-        $error_msg = curl_error($oCurl);
-        curl_close($oCurl);
-
-        // 리턴 JSON 문자열 확인
-        print_r($ret . PHP_EOL);
-
-        // JSON 문자열 배열 변환
-        $retArr = json_decode($ret);
+        $retArr = $this->aligo_curl($_port, $_apiURL, $_variables);
 
         // 결과값 출력
-        print_r($retArr);
+        //print_r($retArr);
     }
 
 
-    public function send_alimtalk($receiver_1, $name)
+
+    public function send_alimtalk_templt($receiver_1, $name, $templt_number)
     {
+
+        //신청자명이 테스트이거나, 테스터가 포함되면 발송되지 않음!
+        if (strpos($name, "테스트") !== false || strpos($name, "테스터") !== false) {
+            return false;
+        }
+
+
+        //템플릿 리스트에서 템플릿 목록 가져오기
+        $templt_list = $this->template_list();
+
+        //사용할 템플릿 번호지정
+        $templt = $templt_list->list[$templt_number];
+
+        //템플릿 내용에서 고객명 변경
+        $templt_content = $templt->templtContent;
+        $templt_content = str_replace("#{고객명}", $name, $templt_content);
+
+        $button_json = json_encode($templt->buttons, JSON_UNESCAPED_UNICODE);
+
+
+        //echo $templt->templtContent;
+        //echo '{"button": ' . $button_json . '}';
+
 
         $_apiURL    =    'https://kakaoapi.aligo.in/akv10/alimtalk/send/';
         $_hostInfo  =    parse_url($_apiURL);
@@ -196,14 +150,16 @@ class Kakao_Aligo
             'userid'      =>  $this->_userid,
             'token'       =>  $_SESSION['aligo_token'],
             'senderkey'   =>  $this->_sender_key,
-            'tpl_code'    => 'TF_7500',
+            'tpl_code'    => $templt->templtCode,
             'sender'      => $this->_phonenumber,
-            //'senddate'    => date("YmdHis", strtotime("+10 minutes")),
-            //'senddate'    => date("YmdHis", strtotime("+11 minutes")),
             'receiver_1'  => $receiver_1,
             'subject_1'   => '알림톡',
-            'message_1'   => "템플릿 메세지 내용 카피",
-            'button_1'    => '템플릿 등록 버튼 내용 입력' // 템플릿에 버튼이 없는경우 제거하시기 바랍니다.
+            'message_1'   => $templt_content,
+            'button_1'    => '{"button": ' . $button_json . '}' // 템플릿에 버튼이 없는경우 제거하시기 바랍니다.
+
+
+            //'senddate'    => date("YmdHis", strtotime("+10 minutes")),
+            //'senddate'    => date("YmdHis", strtotime("+11 minutes")),
             //'receiver_2'  => '첫번째 알림톡을 전송받을 휴대폰 번호',
             //'recvname_2'  => '첫번째 알림톡을 전송받을 사용자 명',
             //'subject_2'   => '첫번째 알림톡을 제목',
@@ -211,34 +167,62 @@ class Kakao_Aligo
             //'button_2'    => '{"button":[{"name":"테스트 버튼","linkType":"DS"}]}' // 템플릿에 버튼이 없는경우 제거하시기 바랍니다.
         );
 
-
-
-        $oCurl = curl_init();
-        curl_setopt($oCurl, CURLOPT_PORT, $_port);
-        curl_setopt($oCurl, CURLOPT_URL, $_apiURL);
-        curl_setopt($oCurl, CURLOPT_POST, 1);
-        curl_setopt($oCurl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($oCurl, CURLOPT_POSTFIELDS, http_build_query($_variables));
-        curl_setopt($oCurl, CURLOPT_SSL_VERIFYPEER, FALSE);
-
-        $ret = curl_exec($oCurl);
-        $error_msg = curl_error($oCurl);
-        curl_close($oCurl);
-
-        // 리턴 JSON 문자열 확인
-        print_r($ret . PHP_EOL);
-
-        // JSON 문자열 배열 변환
-        $retArr = json_decode($ret);
+        //curl로 api전송
+        $ret = $this->aligo_curl($_port, $_apiURL, $_variables);
     }
 
 
+    public function send_alimtalk($receiver_1, $name)
+    {
+        $this->send_alimtalk_templt($receiver_1, $name, 0);
+    }
+
+    public function send_alimtalk2($receiver_1, $name)
+    {
+        $this->send_alimtalk_templt($receiver_1, $name, 1);
+    }
+
+    public function send_alimtalk3($receiver_1, $name)
+    {
+        $this->send_alimtalk_templt($receiver_1, $name, 2);
+    }
+
+    public function send_alimtalk4($receiver_1, $name)
+    {
+        $this->send_alimtalk_templt($receiver_1, $name, 3);
+    }
+
+    public function send_alimtalk5($receiver_1, $name)
+    {
+        $this->send_alimtalk_templt($receiver_1, $name, 4);
+    }
+
+    public function send_alimtalk6($receiver_1, $name)
+    {
+        $this->send_alimtalk_templt($receiver_1, $name, 5);
+    }
+
+
+
+    public function random_alimtalk($receiver_1, $name)
+    {
+
+        //메세지 3개중 랜덤하게 하나 전송
+        $rand = rand(1, 3);
+
+        if ($rand == 1) {
+            $this->send_alimtalk($receiver_1, $name);
+        } else if ($rand == 2) {
+            $this->send_alimtalk2($receiver_1, $name);
+        } else {
+            $this->send_alimtalk3($receiver_1, $name);
+        }
+    }
 
 
 
     public function template_list()
     {
-
         /*
         -----------------------------------------------------------------------------------
         등록된 템플릿 리스트
@@ -256,6 +240,53 @@ class Kakao_Aligo
             'senderkey'   => $this->_sender_key,
         );
 
+
+        $retArr = $this->aligo_curl($_port, $_apiURL, $_variables);
+
+        return $retArr;
+    }
+
+
+    public function history_list()
+    {
+
+
+        $_apiURL        =    'https://kakaoapi.aligo.in/akv10/history/list/';
+        $_hostInfo    =    parse_url($_apiURL);
+        $_port            =    (strtolower($_hostInfo['scheme']) == 'https') ? 443 : 80;
+        $_variables    =    array(
+            'apikey'      =>  $this->_apikey,
+            'userid'      =>  $this->_userid,
+            'token'       =>  $_SESSION['aligo_token']
+        );
+
+        $this->aligo_curl($_port, $_apiURL, $_variables);
+    }
+
+
+    public function history_detail($mid)
+    {
+
+
+        $_apiURL        =    'https://kakaoapi.aligo.in/akv10/history/detail/';
+        $_hostInfo    =    parse_url($_apiURL);
+        $_port            =    (strtolower($_hostInfo['scheme']) == 'https') ? 443 : 80;
+        $_variables    =    array(
+            'apikey'      =>  $this->_apikey,
+            'userid'      =>  $this->_userid,
+            'token'       =>  $_SESSION['aligo_token'],
+
+            'mid'           => $mid,
+
+        );
+
+        $this->aligo_curl($_port, $_apiURL, $_variables);
+    }
+
+
+    private function aligo_curl($_port, $_apiURL, $_variables)
+    {
+
         $oCurl = curl_init();
         curl_setopt($oCurl, CURLOPT_PORT, $_port);
         curl_setopt($oCurl, CURLOPT_URL, $_apiURL);
@@ -268,22 +299,13 @@ class Kakao_Aligo
         $error_msg = curl_error($oCurl);
         curl_close($oCurl);
 
-        // 리턴 JSON 문자열 확인
-        print_r($ret . PHP_EOL);
 
         // JSON 문자열 배열 변환
         $retArr = json_decode($ret);
-
-        // 결과값 출력
-        print_r($retArr);
-
-        /*
-        code : 0 성공, 나머지 숫자는 에러
-        message : 결과 메시지
-        */
+        return $retArr;
     }
 
-
+    // 세션변수 생성
     public function set_session($session_name, $value)
     {
         global $g5;
